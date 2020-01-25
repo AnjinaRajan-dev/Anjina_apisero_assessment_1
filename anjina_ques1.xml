@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:email="http://www.mulesoft.org/schema/mule/email" xmlns:os="http://www.mulesoft.org/schema/mule/os"
+	xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:batch="http://www.mulesoft.org/schema/mule/batch" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/batch http://www.mulesoft.org/schema/mule/batch/current/mule-batch.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd
+http://www.mulesoft.org/schema/mule/email http://www.mulesoft.org/schema/mule/email/current/mule-email.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="219c175d-bf86-4ef3-9e50-b12673c48c91" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<http:request-config name="HTTP_Request_configuration" doc:name="HTTP Request configuration" doc:id="77de5b93-90a0-4e4a-a0cd-74c21dfd7783" basePath="/api/v1" >
+		<http:request-connection host="dummy.restapiexample.com" />
+	</http:request-config>
+	<db:config name="Database_Config" doc:name="Database Config" doc:id="da82abf8-4fec-4707-be7a-55fff776cd17" >
+		<db:my-sql-connection host="db4free.net" port="3306" user="anjina" password="anjina@123" database="mydatabases" />
+	</db:config>
+	<email:smtp-config name="Email_SMTP" doc:name="Email SMTP" doc:id="0aa056cb-db15-446c-9f91-d2a88e0f0031" >
+		<email:smtp-connection host="smtp.gmail.com" user="anjinaraj1996@gmail.com" password="Anjusouvi@07" port="995">
+			<email:properties >
+				<email:property key="mail.smtp.starttls.enable" value="true" />
+			</email:properties>
+		</email:smtp-connection>
+	</email:smtp-config>
+	<flow name="batch-process" doc:id="78d017bf-d0a7-40cf-96b8-4113208a7f90" >
+		<http:request method="GET" doc:name="Request" doc:id="d17678a9-f672-43ff-a55b-ba540ce5dab4" config-ref="HTTP_Request_configuration" path="/employees"/>
+		<ee:transform doc:name="Transform Message" doc:id="e17202ca-c444-4f53-acd1-00ef465a58cc" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload[1]]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<batch:job jobName="new_mule_projectBatch_Job" doc:id="28383493-b821-4ea2-a89f-36b27a249e40" >
+			<batch:process-records >
+				<batch:step name="Batch_Step" doc:id="6c876053-23d1-4a83-90a4-67db9286c6cc" >
+					<db:insert doc:name="Insert" doc:id="08f55b9d-a4e5-4437-afb7-72e51b80068a" config-ref="Database_Config">
+						<db:sql >INSERT INTO employee (id, name, salary, age, profile) VALUES ( :id, :name, :salary, :age, :profile);</db:sql>
+						<db:input-parameters ><![CDATA[#[{
+	'id':payload.id,
+	'name':payload.employee_name,
+	'salary':payload.employee_salary,
+	'age':payload.employee_age,
+	'profile':payload.profile_image
+}]]]></db:input-parameters>
+					</db:insert>
+					<os:store doc:name="Store" doc:id="31f955be-1072-47e2-b6c2-bf1d72a8ea4f" key="#[payload.id]" >
+						<os:value ><![CDATA[#[payload.employee_name]]]></os:value>
+					</os:store>
+				</batch:step>
+			</batch:process-records>
+			<batch:on-complete >
+				<ee:transform doc:name="Transform Message" doc:id="8e6b3b93-999a-432b-83f9-58e89d1dc3a0" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</batch:on-complete>
+		</batch:job>
+		<os:retrieve-all doc:name="Retrieve all" doc:id="c5992e2a-58f8-44d1-b165-ff7e55e350cc" />
+		<ee:transform doc:name="Transform Message" doc:id="8cfda2f5-b779-406f-9988-67023ee83476" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"message": "data inserted through batch processing"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="insert_payload_body" doc:id="6d5fe477-c4e3-4fd4-bd25-ec0c4dd3d04d" >
+		<email:send doc:id="930355d3-1af3-4146-9f49-f3fcd1c753dc" config-ref="Email_SMTP" fromAddress="anjinaraj1996@gmail.com">
+			<email:to-addresses>
+				<email:to-address value="anjinaraj1996@gmail.com" />
+			</email:to-addresses>
+		</email:send>
+		<db:insert doc:name="Insert" doc:id="97bd2d37-9833-4216-8f60-081364290559" config-ref="Database_Config">
+			<db:sql >INSERT INTO employee (id, name, salary, age, profile) VALUES ( :id, :name, :salary, :age, :profile);</db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	'id':payload.id,
+	'name':payload.employee_name,
+	'salary':payload.employee_salary,
+	'age':payload.employee_age,
+	'profile':" "
+}]]]></db:input-parameters>
+		</db:insert>
+		<ee:transform doc:name="Transform Message" doc:id="9becbf06-7871-4e96-a80a-bf3bb9005ece" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"message":"employee data inserted"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="check_id" doc:id="ca75be42-e356-40f3-abb7-772ad3cb8e39" >
+		<db:select doc:name="Select" doc:id="f915b023-6040-4b52-9c4c-d6ba0a00ea1c" config-ref="Database_Config">
+			<db:sql >select * from employee where id = :id</db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	'id':attributes.uriParams.id
+}]]]></db:input-parameters>
+		</db:select>
+		<ee:transform doc:name="Transform Message" doc:id="99698743-24fc-422a-a74f-cb0cdbf1d26b">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+</mule>
