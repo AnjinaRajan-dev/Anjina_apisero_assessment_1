@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:jms="http://www.mulesoft.org/schema/mule/jms"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/current/mule-jms.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
+	<http:listener-config name="HTTP_Listener_config1" doc:name="HTTP Listener config" doc:id="ceb822ac-4201-4e3c-b898-cc75e0e4779b" >
+		<http:listener-connection host="0.0.0.0" port="8082" />
+	</http:listener-config>
+	<flow name="Copy_of_anjina_activemqFlow" doc:id="e119b918-96a0-48e9-bed3-d8e52b8555cc" >
+		<jms:listener doc:name="Listener" doc:id="11783b84-caba-4c2d-8ade-47f4199357d8" config-ref="JMS_Config" destination="employee_queue"/>
+		<jms:consume doc:name="Copy_of_Consume" doc:id="4041deeb-462e-4507-a28d-24dcbb4893e4" config-ref="JMS_Config" destination="employee_queue" maximumWaitUnit="MINUTES"/>
+		<logger level="INFO" doc:name="Logger" doc:id="fd4af687-38bb-486c-85a7-578f1fda7fd2" message="#[payload]"/>
+		<ee:transform doc:name="Copy_of_Transform Message" doc:id="2f83c6e5-0c32-4f80-ada0-000aaad1a9dd" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+ "Transaction":payload.Transaction_date
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+</mule>
